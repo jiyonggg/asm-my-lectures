@@ -61,8 +61,8 @@ Each row has these string fields:
 | `registered_at` | 접수일 | e.g. `2026-04-24 13:05` |
 | `status` | 접수상태 | `접수완료` (confirmed) or `접수취소` (cancelled) |
 | `approval` | 개설승인 | `OK` or `-` |
-| `action_slot` | 접수내역 | usually `-` or `삭제` |
-| `note` | 비고 | `취소` (cancel button shown) or `-` |
+| `action_slot` | 접수내역 | `-`, or `삭제` → **mentor removed the session, so the user's registration is effectively cancelled**. Treat as cancelled regardless of `status`. |
+| `note` | 비고 | Action button label that happens to land in the cell (e.g. `취소`, `삭제`). **Not a state.** |
 
 ### Step 3 — Parse `session_datetime`
 
@@ -84,7 +84,7 @@ This is only needed for the wrapper scripts you generate on the fly to filter/fo
 Apply the filters implied by the user's question:
 
 - **"이번 주"**: Monday through Sunday of the current week in **Asia/Seoul** (KST). If you're unsure what day "today" is, check the conversation's system context or run `date` in bash.
-- **Default to `status == '접수완료'`** unless the user explicitly asks to include cancelled sessions.
+- **Default to "still active"** — exclude both `status == '접수취소'` **and** `action_slot == '삭제'` (mentor removed the session) unless the user explicitly asks to include cancelled sessions.
 - **By type**: `type == '자유멘토링'` or `'멘토특강'`.
 - **By mentor**: substring match on `mentor`.
 - **By keyword in title**: substring match on `title`.
@@ -102,7 +102,8 @@ If the user asks for JSON / CSV / a table / plain text, honour that instead.
 
 ## Common pitfalls
 
-- **`note == '취소'` is NOT a cancelled registration.** It just means the row has a "취소" button the user could click. The authoritative state is `status`.
+- **`note` column values (`취소`, `삭제`, …) are action button labels, not state.** They only mean a button is rendered on the row; they do not indicate registration status. The authoritative state lives in `status` plus `action_slot`.
+- **`action_slot == '삭제'` means the mentor deleted the session.** When that happens, the user's registration is effectively cancelled even though `status` may still read `접수완료`. Treat such rows as cancelled in every default view.
 - **Duplicate titles.** If the user cancelled and re-registered, you'll see two rows for the same session. Each row is its own reception record.
 - **Login failure.** Run the crawler with `--headed` to watch the browser and see what went wrong:
   ```bash
